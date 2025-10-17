@@ -1,0 +1,122 @@
+<?php
+class AuthController extends Controller
+{
+    private $userModel;
+    private $jwt;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->userModel = new User();
+        $this->jwt = new JWTHandler();
+    }
+
+    public function register()
+    {
+        $data = $this->getRequestData();
+
+        if (!$data) {
+            $this->jsonResponse(['success' => false, 'error' => 'Dados JSON inválidos'], 400);
+        }
+
+        $error = $this->validateRequired($data, ['name', 'email', 'password']);
+        if ($error) {
+            $this->jsonResponse(['success' => false, 'error' => $error], 400);
+        }
+
+        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $this->jsonResponse(['success' => false, 'error' => 'Email inválido'], 400);
+        }
+
+        if (strlen($data['password']) < 6) {
+            $this->jsonResponse(['success' => false, 'error' => 'Senha deve ter pelo menos 6 caracteres'], 400);
+        }
+
+        // Verificar se email já existe
+        $existingUser = $this->userModel->findByEmail($data['email']);
+        if ($existingUser) {
+            $this->jsonResponse(['success' => false, 'error' => 'Email já cadastrado'], 409);
+        }
+
+        // Criar usuário
+        $userId = $this->userModel->createUser([
+            'name' => trim($data['name']),
+            'email' => trim($data['email']),
+            'password' => $data['password'],
+            'role' => 'customer'
+        ]);
+
+        if ($userId) {
+            $user = $this->userModel->findById($userId);
+            $token = $this->jwt->generateToken([
+                'id' => (int)$userId,
+                'email' => $user['email'],
+                'role' => $user['role']
+            ]);
+
+            unset($user['password']);
+
+            $this->jsonResponse([
+                'success' => true,
+                'message' => 'Usuário criado com sucesso',
+                'user' => $user,
+                'token' => $token
+            ], 201);
+        } else {
+            $this->jsonResponse(['success' => false, 'error' => 'Erro ao criar usuário'], 500);
+        }
+    }
+
+    public function login()
+    {
+        $data = $this->getRequestData();
+
+        if (!$data) {
+            $this->jsonResponse(['success' => false, 'error' => 'Dados JSON inválidos'], 400);
+        }
+
+        $error = $this->validateRequired($data, ['email', 'password']);
+        if ($error) {
+            $this->jsonResponse(['success' => false, 'error' => $error], 400);
+        }
+
+        $user = $this->userModel->findByEmail(trim($data['email']));
+
+        if ($user && $this->userModel->verifyPassword($data['password'], $user['password'])) {
+            $token = $this->jwt->generateToken([
+                'id' => (int)$user['id'],
+                'email' => $user['email'],
+                'role' => $user['role']
+            ]);
+
+            unset($user['password']);
+
+            $this->jsonResponse([
+                'success' => true,
+                'message' => 'Login realizado com sucesso',
+                'user' => $user,
+                'token' => $token
+            ]);
+        } else {
+            $this->jsonResponse(['success' => false, 'error' => 'Credenciais inválidas'], 401);
+        }
+    }
+
+    public function profile()
+    {
+        $auth = new AuthMiddleware();
+        $userData = $auth->authenticate();
+
+        $user = $this->userModel->findById($userData->id);
+        if (!$user) {
+            $this->jsonResponse(['success' => false, 'error' => 'Usuário não encontrado'], 404);
+        }
+
+        unset($user['password']);
+
+        $this->jsonResponse([
+            'success' => true,
+            'user' => $user
+        ]);
+    }
+}
