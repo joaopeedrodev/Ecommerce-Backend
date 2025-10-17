@@ -1,0 +1,78 @@
+-- Banco de dados ecommerce
+CREATE DATABASE IF NOT EXISTS ecommerce;
+USE ecommerce;
+
+-- Tabela de usuários
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('customer', 'admin') DEFAULT 'customer',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Tabela de categorias
+CREATE TABLE categories (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabela de produtos
+CREATE TABLE products (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    category_id INT,
+    stock INT DEFAULT 0,
+    image_url VARCHAR(500),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+
+-- Tabela de pedidos
+CREATE TABLE orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    total DECIMAL(10,2) NOT NULL,
+    status ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- Tabela de itens do pedido
+CREATE TABLE order_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (product_id) REFERENCES products(id)
+);
+
+-- Dados de exemplo
+INSERT INTO categories (name, description) VALUES 
+('Eletrônicos', 'Dispositivos eletrônicos e gadgets'),
+('Roupas', 'Vestuário em geral'),
+('Livros', 'Livros de diversos gêneros'),
+('Casa e Decoração', 'Itens para casa e decoração');
+
+INSERT INTO products (name, description, price, category_id, stock) VALUES 
+('Smartphone XYZ', 'Smartphone moderno com câmera de alta resolução', 999.99, 1, 50),
+('Notebook ABC', 'Notebook potente para trabalho e jogos', 1999.99, 1, 25),
+('Camiseta Básica', 'Camiseta 100% algodão', 29.99, 2, 100),
+('Livro PHP Avançado', 'Aprenda PHP com projetos reais', 49.99, 3, 30),
+('Headphone Wireless', 'Headphone com cancelamento de ruído', 299.99, 1, 15),
+('Calça Jeans', 'Calça jeans moderna', 89.99, 2, 40);
+
+-- Usuário admin padrão (senha: password)
+INSERT INTO users (name, email, password, role) VALUES 
+('Administrador', 'admin@ecommerce.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin');
