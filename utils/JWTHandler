@@ -1,0 +1,64 @@
+<?php
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+
+class JWTHandler
+{
+    private $secret;
+    private $algorithm;
+
+    public function __construct()
+    {
+        $this->secret = JWT_SECRET;
+        $this->algorithm = 'HS256';
+    }
+
+    public function generateToken($payload)
+    {
+        $issuedAt = time();
+        $expire = $issuedAt + (60 * 60 * 24); // 24 horas
+
+        $tokenPayload = [
+            "iat" => $issuedAt,
+            "exp" => $expire,
+            "iss" => BASE_URL,
+            "data" => $payload
+        ];
+
+        return JWT::encode($tokenPayload, $this->secret, $this->algorithm);
+    }
+
+    public function validateToken($token)
+    {
+        try {
+            $decoded = JWT::decode($token, new Key($this->secret, $this->algorithm));
+            return $decoded->data;
+        } catch (Exception $e) {
+            error_log("JWT Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function getTokenFromHeader()
+    {
+        $headers = getallheaders();
+
+        if (isset($headers['Authorization'])) {
+            $authHeader = $headers['Authorization'];
+            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+                return $matches[1];
+            }
+        }
+
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $authHeader = $_SERVER['HTTP_AUTHORIZATION'];
+            if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+                return $matches[1];
+            }
+        }
+
+        return null;
+    }
+}
