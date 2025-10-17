@@ -1,0 +1,43 @@
+<?php
+class Controller
+{
+    protected $db;
+
+    public function __construct()
+    {
+        $this->db = (new Database())->connect();
+    }
+
+    protected function jsonResponse($data, $status = 200)
+    {
+        http_response_code($status);
+        header('Content-Type: application/json');
+        echo json_encode($data, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    protected function getRequestData()
+    {
+        $input = file_get_contents('php://input');
+        $data = json_decode($input, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $this->jsonResponse([
+                'success' => false,
+                'error' => 'JSON inválido: ' . json_last_error_msg()
+            ], 400);
+        }
+
+        return $data;
+    }
+
+    protected function validateRequired($data, $fields)
+    {
+        foreach ($fields as $field) {
+            if (!isset($data[$field]) || empty(trim($data[$field]))) {
+                return "Campo '$field' é obrigatório";
+            }
+        }
+        return null;
+    }
+}
