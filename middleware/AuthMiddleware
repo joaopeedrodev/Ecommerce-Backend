@@ -1,0 +1,45 @@
+<?php
+class AuthMiddleware
+{
+    private $jwt;
+
+    public function __construct()
+    {
+        $this->jwt = new JWTHandler();
+    }
+
+    public function authenticate()
+    {
+        $token = $this->jwt->getTokenFromHeader();
+
+        if (!$token) {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'error' => 'Token de autenticação não fornecido'
+            ]);
+            exit;
+        }
+
+        $userData = $this->jwt->validateToken($token);
+
+        if (!$userData) {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => false,
+                'error' => 'Token inválido ou expirado'
+            ]);
+            exit;
+        }
+
+        return $userData;
+    }
+
+    public function optionalAuth()
+    {
+        $token = $this->jwt->getTokenFromHeader();
+        return $token ? $this->jwt->validateToken($token) : null;
+    }
+}
