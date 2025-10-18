@@ -16,8 +16,8 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: ecommerce_test
+          MYSQL_ROOT_PASSWORD: " "
+          MYSQL_DATABASE: ecommerce
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
@@ -47,9 +47,9 @@ jobs:
         echo "DB_CONNECTION=mysql" >> .env
         echo "DB_HOST=127.0.0.1" >> .env
         echo "DB_PORT=3306" >> .env
-        echo "DB_DATABASE=ecommerce_test" >> .env
+        echo "DB_DATABASE=ecommerce" >> .env
         echo "DB_USERNAME=root" >> .env
-        echo "DB_PASSWORD=password" >> .env
+        echo "DB_PASSWORD= " " >> .env
         echo "CACHE_DRIVER=redis" >> .env
         echo "REDIS_HOST=127.0.0.1" >> .env
         echo "REDIS_PORT=6379" >> .env
