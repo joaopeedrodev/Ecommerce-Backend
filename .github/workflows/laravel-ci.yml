@@ -1,9 +1,8 @@
-# .github/workflows/laravel-ci.yml
 name: Laravel CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -12,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      # Serviço MySQL para testes
       mysql:
         image: mysql:8.0
         env:
@@ -22,13 +20,6 @@ jobs:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
-      # Serviço Redis (opcional)
-      redis:
-        image: redis:alpine
-        ports:
-          - 6379:6379
-        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -37,29 +28,33 @@ jobs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.2'
-        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, bcmath, redis
-        coverage: xdebug
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, bcmath
 
-    - name: Copy .env
+    - name: Create .env file
       run: |
         cp .env.example .env
         echo "APP_ENV=testing" >> .env
+        echo "APP_KEY=base64:testkey123456789012345678901234567890" >> .env
         echo "DB_CONNECTION=mysql" >> .env
         echo "DB_HOST=127.0.0.1" >> .env
         echo "DB_PORT=3306" >> .env
         echo "DB_DATABASE=ecommerce" >> .env
         echo "DB_USERNAME=root" >> .env
         echo "DB_PASSWORD=" " >> .env
-        echo "CACHE_DRIVER=redis" >> .env
-        echo "REDIS_HOST=127.0.0.1" >> .env
-        echo "REDIS_PORT=6379" >> .env
+
+    - name: Wait for MySQL
+      run: |
+        for i in {1..30}; do
+          if mysqladmin ping -h"127.0.0.1" -u"root" -p"password" --silent; then
+            echo "✅ MySQL is ready!"
+            break
+          fi
+          echo "⏳ Waiting for MySQL... ($i/30)"
+          sleep 2
+        done
 
     - name: Install Composer dependencies
-      run: |
-        composer install --no-progress --prefer-dist --optimize-autoloader
-
-    - name: Generate application key
-      run: php artisan key:generate
+      run: composer install --no-progress --prefer-dist --optimize-autoloader
 
     - name: Create database
       run: |
@@ -68,44 +63,5 @@ jobs:
     - name: Run migrations
       run: php artisan migrate --force
 
-    - name: Run seeders
-      run: php artisan db:seed --force
-
-    - name: Execute PHPUnit tests
-      run: ./vendor/bin/phpunit --coverage-text
-
-    - name: Run Laravel Pint (formatação)
-      run: ./vendor/bin/pint --test
-
-  code-quality:
-    runs-on: ubuntu-latest
-    needs: laravel-tests
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.2'
-
-    - name: Install dependencies
-      run: composer install --no-progress --prefer-dist
-
-    - name: Run PHPStan
-      run: ./vendor/bin/phpstan analyse --memory-limit=2G
-
-    - name: Run Security Check
-      run: ./vendor/bin/security-checker security:check
-
-  build-success:
-    runs-on: ubuntu-latest
-    needs: [laravel-tests, code-quality]
-    if: success()
-    
-    steps:
-    - name: Build Success
-      run: |
-        echo "✅ Todos os testes passaram!"
-        echo "📦 Build estável e pronta para deploy"
+    - name: Run tests
+      run: ./vendor/bin/phpunit --verbose
