@@ -1,0 +1,91 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Create HTML content
+      run: |
+        # Cria a pasta public (sem o ponto)
+        mkdir -p public
+        
+        # Cria o arquivo index.html
+        echo '<!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>E-commerce Backend API</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+                h1 { color: #2c3e50; }
+                .endpoint { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px; }
+                .method { font-weight: bold; color: #e74c3c; }
+            </style>
+        </head>
+        <body>
+            <h1>🚀 E-commerce Backend API</h1>
+            <p>Bem-vindo à documentação da API do backend do e-commerce.</p>
+            
+            <h2>📚 Endpoints Disponíveis</h2>
+            
+            <div class="endpoint">
+                <span class="method">GET</span> /api/products
+                <p>Lista todos os produtos</p>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">POST</span> /api/orders
+                <p>Cria um novo pedido</p>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">GET</span> /api/users
+                <p>Gerencia usuários</p>
+            </div>
+            
+            <div class="endpoint">
+                <span class="method">GET</span> /api/categories
+                <p>Lista categorias</p>
+            </div>
+            
+            <footer>
+                <p><strong>Repositório:</strong> <a href="https://github.com/joaopeedrodev/ecommerce-backend">github.com/joaopeedrodev/ecommerce-backend</a></p>
+            </footer>
+        </body>
+        </html>' > public/index.html
+        
+        # Verifica se o arquivo foi criado
+        ls -la public/
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+      
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: '/public'  # ⚠️ IMPORTANTE: sem o ponto, só 'public'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
