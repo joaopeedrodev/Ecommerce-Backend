@@ -20,7 +20,7 @@ jobs:
       
     - name: Create simple HTML
       run: |
-        mkdir -p public
+        
         echo '<!DOCTYPE html>
         <html>
         <head>
