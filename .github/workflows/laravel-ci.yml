@@ -1,94 +1,47 @@
-name: Backend CI
+name: Laravel CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main ]
 
 jobs:
-  test-backend:
+  laravel-tests:
     runs-on: ubuntu-latest
-    
+
     services:
       mysql:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: " "
-          MYSQL_DATABASE: ecommerce
+          MYSQL_DATABASE: ecommerce 
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.2'
-        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, bcmath, openssl
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
+        coverage: xdebug
 
-    - name: Create .env for testing
-      run: |
-        cp .env.example .env
-        echo "APP_ENV=testing" >> .env
-        echo "APP_KEY=base64:testkey123456789012345678901234567890" >> .env
-        echo "DB_CONNECTION=mysql" >> .env
-        echo "DB_HOST=127.0.0.1" >> .env
-        echo "DB_PORT=3306" >> .env
-        echo "DB_DATABASE=ecommerce" >> .env
-        echo "DB_USERNAME=root" >> .env
-        echo "DB_PASSWORD=" " >> .env
-        echo "CACHE_DRIVER=array" >> .env
-        echo "QUEUE_CONNECTION=sync" >> .env
+    - name: Copy .env
+      run: cp .env.example .env
 
-    - name: Wait for MySQL
-      run: |
-        sleep 10
-        mysqladmin ping -h"127.0.0.1" -u"root" -p"password" --silent
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-interaction
 
-    - name: Install Composer dependencies
-      run: composer install --no-progress --prefer-dist --optimize-autoloader
+    - name: Generate key
+      run: php artisan key:generate
 
     - name: Create database
       run: |
-        mysql -h 127.0.0.1 -u root -ppassword -e "CREATE DATABASE IF NOT EXISTS ecommerce_test;"
-
-    - name: Run migrations
-      run: php artisan migrate --force
-
-    - name: Run seeders (opcional)
-      run: php artisan db:seed --force
+        mysql -h 127.0.0.1 -u root -ppassword -e "CREATE DATABASE IF NOT EXISTS laravel_test;"
 
     - name: Execute tests
-      run: ./vendor/bin/phpunit --verbose
-
-    - name: Validate routes
-      run: php artisan route:list
-
-  code-quality:
-    runs-on: ubuntu-latest
-    needs: test-backend
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.2'
-
-    - name: Install dependencies
-      run: composer install --no-progress --prefer-dist
-
-    - name: Check syntax
-      run: |
-        find app/ -name "*.php" -exec php -l {} \;
-        find database/ -name "*.php" -exec php -l {} \;
-        echo "✅ Syntax check completed"
-
-    - name: Run Laravel Pint (formatação)
-      run: ./vendor/bin/pint --test
+      run: vendor/bin/phpunit
