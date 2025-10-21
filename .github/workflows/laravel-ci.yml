@@ -9,39 +9,81 @@ on:
 jobs:
   laravel-tests:
     runs-on: ubuntu-latest
-
+    
     services:
       mysql:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: " "
-          MYSQL_DATABASE: ecommerce 
+          MYSQL_DATABASE: ecommerce
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.2'
-        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
-        coverage: xdebug
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, bcmath
+        coverage: none
 
-    - name: Copy .env
-      run: cp .env.example .env
+    - name: Create .env file
+      run: |
+        cat > .env << 'EOF'
+APP_NAME="Laravel Test"
+APP_ENV= testing
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost
 
-    - name: Install dependencies
-      run: composer install --prefer-dist --no-progress --no-interaction
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel_test
+DB_USERNAME=root
+DB_PASSWORD=password
 
-    - name: Generate key
-      run: php artisan key:generate
+BROADCAST_DRIVER=log
+CACHE_DRIVER=file
+FILESYSTEM_DISK=local
+QUEUE_CONNECTION=sync
+SESSION_DRIVER=file
+SESSION_LIFETIME=120
+
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+
+MAIL_MAILER=array
+MAIL_HOST=127.0.0.1
+MAIL_PORT=1025
+MAIL_USERNAME=null
+MAIL_PASSWORD=null
+MAIL_ENCRYPTION=null
+EOF
 
     - name: Create database
       run: |
         mysql -h 127.0.0.1 -u root -ppassword -e "CREATE DATABASE IF NOT EXISTS laravel_test;"
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-interaction
+
+    - name: Generate app key
+      run: php artisan key:generate
+
+    - name: Create storage directories
+      run: |
+        mkdir -p storage/framework/cache/data
+        mkdir -p storage/framework/sessions
+        mkdir -p storage/framework/views
+
+    - name: Run migrations and seed
+      run: php artisan migrate --force
 
     - name: Execute tests
       run: vendor/bin/phpunit
